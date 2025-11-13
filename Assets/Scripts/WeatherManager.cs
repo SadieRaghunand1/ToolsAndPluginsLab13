@@ -44,13 +44,15 @@ public class WeatherManager : MonoBehaviour
 
     public IEnumerator GetWeatherXML(Action<string> callback)
     {
-        //return CallAPI(xmlApi, callback);
-        return CallAPI(apiURL, callback);
+        Debug.Log(CallAPI(xmlApi, callback));
+        return CallAPI(xmlApi, callback);
+        //return CallAPI(apiURL, callback);
     }
 
     public void OnXMLDataLoaded(string data)
     {
         //ParseXML(data);
+        XDocument _xml = XDocument.Parse(data);
         Debug.Log(data);
     }
 
