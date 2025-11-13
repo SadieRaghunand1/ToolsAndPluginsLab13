@@ -78,7 +78,8 @@ public class WeatherManager : MonoBehaviour
         var _temp = temperature.Attribute("value").Value;
         var _cloudiness = clouds.Attribute("value").Value;
         var _weather = weather.Attribute("number").Value;
-        var _Ftemp = (_temp - 273.15f) * (9 / 5) + 32;
+        float _parsedTemp = float.Parse(_temp);
+        var _Ftemp = (_parsedTemp - 273.15f) * (9 / 5) + 32;
 
         Debug.Log("Sunrise: " + _sunRise);
         Debug.Log("Sunset: " + _sunSet);
