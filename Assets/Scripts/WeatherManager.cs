@@ -52,7 +52,7 @@ public class WeatherManager : MonoBehaviour
     public void OnXMLDataLoaded(string data)
     {
         //ParseXML(data);
-        XDocument _xml = XDocument.Parse(data);
+        XDocument _xml = XDocument.Load(data);
         Debug.Log(data);
     }
 
