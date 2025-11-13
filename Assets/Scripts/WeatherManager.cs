@@ -68,6 +68,23 @@ public class WeatherManager : MonoBehaviour
         ///weather.number or weather.value
 
         var city = _doc.Element("current").Element("city");
+        var sun = city.Element("sun");
+        var temperature = _doc.Element("current").Element("temperature");
+        var clouds = _doc.Element("current").Element("clouds");
+        var weather = _doc.Element("current").Element("weather");
+
+        var _sunRise = sun.Attribute("rise").Value;
+        var _sunSet = sun.Attribute("set").Value;
+        var _temp = temperature.Attribute("value").Value;
+        var _cloudiness = clouds.Attribute("value").Value;
+        var _weather = weather.Attribute("number").Value;
+
+        Debug.Log("Sunrise: " + _sunRise);
+        Debug.Log("Sunset: " + _sunSet);
+        Debug.Log("Temp: " + _temp);
+        Debug.Log("Clouds: " + _cloudiness);
+        Debug.Log("Weather Code: " + _weather);
+        Debug.Log("City?" + city);
         //var _timezone = _doc.Element("timezone");
         //var _sunRise = _doc.Element("sun rise");
         //var _sunSet = _doc.Element("sun set");
