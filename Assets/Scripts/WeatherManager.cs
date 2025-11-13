@@ -18,7 +18,7 @@ public class WeatherManager : MonoBehaviour
 
     private void Start()
     {
-        apiURL = "https://api.openweathermap.org/data/2.5/weather?lat=" + coordinates.x + "&lon=" + coordinates.y + "&appid=338d1bb124320c2c9208a0b12ad1a906";
+        apiURL = "https://api.openweathermap.org/data/2.5/weather?lat=" + coordinates.x + "&lon=" + coordinates.y + "&appid=338d1bb124320c2c9208a0b12ad1a906&mode=xml";
         StartCoroutine(GetWeatherXML(OnXMLDataLoaded));
     }
 
@@ -44,16 +44,17 @@ public class WeatherManager : MonoBehaviour
 
     public IEnumerator GetWeatherXML(Action<string> callback)
     {
-        Debug.Log(CallAPI(xmlApi, callback));
-        return CallAPI(xmlApi, callback);
+        //Debug.Log(CallAPI(xmlApi, callback));
+        //return CallAPI(xmlApi, callback);
         //return CallAPI(apiURL, callback);
+        yield return StartCoroutine(CallAPI(apiURL, callback));
     }
 
     public void OnXMLDataLoaded(string data)
     {
-        //ParseXML(data);
         XDocument _xml = XDocument.Parse(data);
         Debug.Log(data);
+        ParseXML(_xml);
     }
 
     private void ParseXML(XDocument _doc)
@@ -66,12 +67,13 @@ public class WeatherManager : MonoBehaviour
         ///clouds.value
         ///weather.number or weather.value
 
-        var _timezone = _doc.Element("timezone");
-        var _sunRise = _doc.Element("sun rise");
-        var _sunSet = _doc.Element("sun set");
-        var _temp = _doc.Element("temperature value");
-        var _cloudiness = _doc.Element("clouds value");
-        var _weather = _doc.Element("weather number");
+        var city = _doc.Element("current").Element("city");
+        //var _timezone = _doc.Element("timezone");
+        //var _sunRise = _doc.Element("sun rise");
+        //var _sunSet = _doc.Element("sun set");
+        //var _temp = _doc.Element("temperature value");
+        //var _cloudiness = _doc.Element("clouds value");
+        //var _weather = _doc.Element("weather number");
 
         //Convert these into data for variables for scene
 
