@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using System.Xml.Linq;
+using System.Globalization;
+using Unity.VisualScripting;
 
 public class WeatherManager : MonoBehaviour
 {
@@ -15,6 +17,16 @@ public class WeatherManager : MonoBehaviour
     private bool isDay;
     private Color lightColor;
     private float lightIntensity;
+
+    [SerializeField] private Skybox skybox;
+    [SerializeField] private Material[] allSkyMats;
+
+    public string[] testTime;
+        //0 - Day
+        //1 - sunset
+        //2 - night
+        //3 - rain
+        //4 - snow
 
     private void Start()
     {
@@ -44,9 +56,7 @@ public class WeatherManager : MonoBehaviour
 
     public IEnumerator GetWeatherXML(Action<string> callback)
     {
-        //Debug.Log(CallAPI(xmlApi, callback));
-        //return CallAPI(xmlApi, callback);
-        //return CallAPI(apiURL, callback);
+
         yield return StartCoroutine(CallAPI(apiURL, callback));
     }
 
@@ -72,6 +82,7 @@ public class WeatherManager : MonoBehaviour
         var temperature = _doc.Element("current").Element("temperature");
         var clouds = _doc.Element("current").Element("clouds");
         var weather = _doc.Element("current").Element("weather");
+        var _timezone = _doc.Element("current").Element("timezone_offset");
 
         var _sunRise = sun.Attribute("rise").Value;
         var _sunSet = sun.Attribute("set").Value;
@@ -88,22 +99,36 @@ public class WeatherManager : MonoBehaviour
         Debug.Log("Clouds: " + _cloudiness);
         Debug.Log("Weather Code: " + _weather);
         Debug.Log("City?" + city);
-        //var _timezone = _doc.Element("timezone");
-        //var _sunRise = _doc.Element("sun rise");
-        //var _sunSet = _doc.Element("sun set");
-        //var _temp = _doc.Element("temperature value");
-        //var _cloudiness = _doc.Element("clouds value");
-        //var _weather = _doc.Element("weather number");
 
-        //Convert these into data for variables for scene
+       /* System.TimeSpan _sunRiseTime = System.TimeSpan.Parse(_sunRise);
+        System.TimeSpan _sunSetTime = System.TimeSpan.Parse(_sunSet);
+        string _t = _timezone.Value;
+
+        CheckIfDayTime(_sunRiseTime, _sunSetTime, _t);*/
 
     }
 
-    private void CheckIfDayTime(float _timezone)
+    private void CheckIfDayTime(System.TimeSpan _rise, System.TimeSpan _set, string _timezoneOff)
     {
         //Use timzeone and sunrise/sunset time to determine if it is day or night
 
-        var _currentTime = System.DateTime.Now;
+        System.DateTime _currentTime = System.DateTime.Now;
+        System.TimeSpan _time = _currentTime.TimeOfDay;
+        System.TimeSpan _off;
+        System.TimeSpan.TryParse(_timezoneOff, out _off);
+        System.TimeSpan _targetTime = _time + _off;
+
+        //Parse for time
+        if(_targetTime > _rise && _targetTime < _set)
+        {
+            //day
+            isDay = true;
+        }
+        else if(_targetTime < _rise || _targetTime > _set)
+        {
+            //night
+            isDay = false;
+        }
     }
 
 
@@ -140,5 +165,12 @@ public class WeatherManager : MonoBehaviour
             //Cloudiness, may just rely on weather value for this?
             _tmpIntensity -= (_cloud / 10);
         }
+    }
+
+
+    private void ChangeSkyBox(int _idx)
+    {
+       // skybox.GetComponent<Material>().exposure
+       RenderSettings.skybox = allSkyMats[_idx];
     }
 }
