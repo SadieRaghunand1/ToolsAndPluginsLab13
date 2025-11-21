@@ -2,11 +2,12 @@ using PlayFab.ClientModels;
 using PlayFab;
 using UnityEngine;
 
-public class PlayFabManagerScript : MonoBehaviour
+public class PlayFabManagerScript
 {
     private LoginManagerScript loginManager;
     private string savedEmailKey = "SavedEmail";
     private string userEmail;
+    
 
     private void Start()
     {
@@ -23,9 +24,9 @@ public class PlayFabManagerScript : MonoBehaviour
     //method for triggering email login 
     //public void EmailLoginButtonClicked(string email, string password)
     //{
-       // userEmail = email;
-        //loginManager.SetLoginMethod(new EmailLogin(email, password));
-        //loginManager.Login(OnLoginSuccess, OnLoginFailure);
+       //userEmail = email;
+       //loginManager.SetLoginMethod(new EmailLogin(email, password));
+       //loginManager.Login(OnLoginSuccess, OnLoginFailure); 
     //}
 
     private void OnLoginSuccess(LoginResult result)
