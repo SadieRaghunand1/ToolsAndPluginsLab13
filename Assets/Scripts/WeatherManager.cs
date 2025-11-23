@@ -1,176 +1,182 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using System.Xml.Linq;
-using System.Globalization;
-using Unity.VisualScripting;
 
 public class WeatherManager : MonoBehaviour
 {
+    public enum Cities
+    {
+        NewYork,
+        London,
+        Tokyo,
+        MelbourneAU,
+        Orlando
+    }
+
+    [Header("City Settings")]
+    public Cities selectedCity; 
     [SerializeField] private Vector2 coordinates;
 
-    private const string xmlApi = "https://api.openweathermap.org/data/2.5/weather?lat=28.5384&lon=81.3789&appid=338d1bb124320c2c9208a0b12ad1a906";
-    private string apiURL;
+    [Header("Skybox Settings")]
+    // 0-Day, 1-Sunset, 2-Night, 3-Rain, 4-Snow
+    [SerializeField] private Material[] allSkyMats; 
+
+    [SerializeField] private Light directionalLight;
 
     private bool isDay;
-    private Color lightColor;
-    private float lightIntensity;
 
-    [SerializeField] private Skybox skybox;
-    [SerializeField] private Material[] allSkyMats;
+    private const string apiKey = "338d1bb124320c2c9208a0b12ad1a906";
 
-    public string[] testTime;
-        //0 - Day
-        //1 - sunset
-        //2 - night
-        //3 - rain
-        //4 - snow
+    private void OnValidate()
+    {
+        UpdateCoordinates();
+        if (Application.isPlaying)
+            StartCoroutine(GetWeatherXML(OnXMLDataLoaded));
+    }
 
     private void Start()
     {
-        apiURL = "https://api.openweathermap.org/data/2.5/weather?lat=" + coordinates.x + "&lon=" + coordinates.y + "&appid=338d1bb124320c2c9208a0b12ad1a906&mode=xml";
+        UpdateCoordinates();
         StartCoroutine(GetWeatherXML(OnXMLDataLoaded));
     }
 
+    private void UpdateCoordinates()
+    {
+        switch (selectedCity)
+        {
+            case Cities.NewYork: coordinates = new Vector2(40.7128f, -74.0060f); break;
+            case Cities.London: coordinates = new Vector2(51.5074f, -0.1278f); break;
+            case Cities.Tokyo: coordinates = new Vector2(35.6895f, 139.6917f); break;
+            case Cities.MelbourneAU: coordinates = new Vector2(37.8136f, 144.9631f); break;
+            case Cities.Orlando: coordinates = new Vector2(28.5384f, -81.3789f); break;
+        }
+        Debug.Log($"City changed to {selectedCity}, coords: {coordinates}");
+    }
+
+    #region API
     private IEnumerator CallAPI(string url, Action<string> callback)
     {
         using (UnityWebRequest request = UnityWebRequest.Get(url))
         {
             yield return request.SendWebRequest();
-            if (request.result == UnityWebRequest.Result.ConnectionError)
-            {
-                Debug.LogError($"network problem: {request.error}");
-            }
-            else if (request.result == UnityWebRequest.Result.ProtocolError)
-            {
-                Debug.LogError($"response error: {request.responseCode}");
-            }
+            if (request.result != UnityWebRequest.Result.Success)
+                Debug.LogError($"Request failed: {request.error}");
             else
-            {
                 callback(request.downloadHandler.text);
-            }
         }
     }
 
-    public IEnumerator GetWeatherXML(Action<string> callback)
+    private IEnumerator GetWeatherXML(Action<string> callback)
     {
-
+        string apiURL = $"https://api.openweathermap.org/data/2.5/weather?lat={coordinates.x}&lon={coordinates.y}&appid={apiKey}&mode=xml";
+        Debug.Log("Fetching: " + apiURL);
         yield return StartCoroutine(CallAPI(apiURL, callback));
     }
+    #endregion
 
-    public void OnXMLDataLoaded(string data)
+    #region XML Parsing
+    private void OnXMLDataLoaded(string data)
     {
-        XDocument _xml = XDocument.Parse(data);
-        Debug.Log(data);
-        ParseXML(_xml);
+        XDocument xml = XDocument.Parse(data);
+        ParseXML(xml);
     }
 
-    private void ParseXML(XDocument _doc)
+    private void ParseXML(XDocument doc)
     {
-        //Read for things that change the skybox, light, and day/time
-        //This is:
-        ////Timezone
-        ///city.sun
-        ///temperature.value
-        ///clouds.value
-        ///weather.number or weather.value
+        var city = doc.Element("current")?.Element("city");
+        var sun = city?.Element("sun");
+        var temperature = doc.Element("current")?.Element("temperature");
+        var clouds = doc.Element("current")?.Element("clouds");
+        var weather = doc.Element("current")?.Element("weather");
 
-        var city = _doc.Element("current").Element("city");
-        var sun = city.Element("sun");
-        var temperature = _doc.Element("current").Element("temperature");
-        var clouds = _doc.Element("current").Element("clouds");
-        var weather = _doc.Element("current").Element("weather");
-        var _timezone = _doc.Element("current").Element("timezone_offset");
-
-        var _sunRise = sun.Attribute("rise").Value;
-        var _sunSet = sun.Attribute("set").Value;
-        var _temp = temperature.Attribute("value").Value;
-        var _cloudiness = clouds.Attribute("value").Value;
-        var _weather = weather.Attribute("number").Value;
-        float _parsedTemp = float.Parse(_temp);
-        var _Ftemp = (_parsedTemp - 273.15f) * 9/5 + 32;
-
-        Debug.Log("Sunrise: " + _sunRise);
-        Debug.Log("Sunset: " + _sunSet);
-        Debug.Log("Temp kelvin: " + _temp);
-        Debug.Log("Temp fahrenheit: " + _Ftemp);
-        Debug.Log("Clouds: " + _cloudiness);
-        Debug.Log("Weather Code: " + _weather);
-        Debug.Log("City?" + city);
-
-       /* System.TimeSpan _sunRiseTime = System.TimeSpan.Parse(_sunRise);
-        System.TimeSpan _sunSetTime = System.TimeSpan.Parse(_sunSet);
-        string _t = _timezone.Value;
-
-        CheckIfDayTime(_sunRiseTime, _sunSetTime, _t);*/
-
-    }
-
-    private void CheckIfDayTime(System.TimeSpan _rise, System.TimeSpan _set, string _timezoneOff)
-    {
-        //Use timzeone and sunrise/sunset time to determine if it is day or night
-
-        System.DateTime _currentTime = System.DateTime.Now;
-        System.TimeSpan _time = _currentTime.TimeOfDay;
-        System.TimeSpan _off;
-        System.TimeSpan.TryParse(_timezoneOff, out _off);
-        System.TimeSpan _targetTime = _time + _off;
-
-        //Parse for time
-        if(_targetTime > _rise && _targetTime < _set)
+        if (city == null || sun == null || temperature == null || clouds == null || weather == null)
         {
-            //day
-            isDay = true;
+            Debug.LogError("XML missing required elements.");
+            return;
         }
-        else if(_targetTime < _rise || _targetTime > _set)
+
+        // Parse sunrise/sunset
+        if (!DateTime.TryParse(sun.Attribute("rise")?.Value, out DateTime sunRise) ||
+            !DateTime.TryParse(sun.Attribute("set")?.Value, out DateTime sunSet))
         {
-            //night
-            isDay = false;
+            Debug.LogError("Failed to parse sunrise/sunset.");
+            return;
         }
+
+        // Day/night check
+        DateTime nowUTC = DateTime.UtcNow;
+        isDay = nowUTC > sunRise.ToUniversalTime() && nowUTC < sunSet.ToUniversalTime();
+
+        // Parse temperature, clouds, weather
+        float tempK = float.Parse(temperature.Attribute("value")?.Value ?? "0");
+        float tempF = (tempK - 273.15f) * 9 / 5 + 32;
+        float cloudiness = float.Parse(clouds.Attribute("value")?.Value ?? "0");
+        int weatherCode = int.Parse(weather.Attribute("number")?.Value ?? "0");
+
+        // Show info in logs
+        Debug.Log("City: " + city.Attribute("name")?.Value);
+        Debug.Log("Sunrise: " + sunRise);
+        Debug.Log("Sunset: " + sunSet);
+        Debug.Log("Temp K: " + tempK);
+        Debug.Log("Temp F: " + tempF);
+        Debug.Log("Clouds: " + cloudiness);
+        Debug.Log("Weather Code: " + weatherCode);
+        Debug.Log("Daytime? " + isDay);
+
+        // Update lighting and skybox
+        UpdateLighting(tempK, cloudiness, weatherCode);
+        UpdateSkybox(weatherCode);
     }
+    #endregion
 
-
-    private void CalculateLightIntensity(float _temp, float _cloud, float _weather)
+    #region Helpers
+    private void UpdateLighting(float tempK, float cloudiness, int weatherCode)
     {
-        //Less cloudy = higher light
-        //Higher temp = higher light
-        //sunny weather = higher light
-        //Overriden by if it is nighttime
+        if (directionalLight == null) return;
 
-        float _tmpIntensity = 0; //1 is most intense, 0 least
+        float intensity = 0f;
 
-        if(isDay)
+        if (isDay)
         {
-            //Weather conditions
-            if(_weather == 800) ///Sunny
-            {
-                _tmpIntensity = 1;
-            }
-            else if(_weather > 800 && _weather < 805) //Cloudy
-            {
-                int _i = (int)_weather % 10;
-                _i = 100 - (_i * 25);
-                _tmpIntensity = _i / 100;
-            }
-            else //Other varying bad weather conditions
-            {
-                _tmpIntensity = 0.5f;
-            }
+            // sunny
+            if (weatherCode == 800) intensity = 1f; 
+            // cloudy
+            else if (weatherCode >= 801 && weatherCode <= 804) intensity = 0.75f; 
+            // rain/snow
+            else intensity = 0.5f; 
 
-            //Temperature
-            _tmpIntensity += (_temp / 15);
-
-            //Cloudiness, may just rely on weather value for this?
-            _tmpIntensity -= (_cloud / 10);
+            intensity += (tempK - 273.15f) / 150f;
+            intensity -= cloudiness / 100f;
         }
+
+        intensity = Mathf.Clamp(intensity, 0f, 1f);
+        directionalLight.intensity = intensity;
+        directionalLight.color = isDay ? Color.white : Color.gray;
     }
 
-
-    private void ChangeSkyBox(int _idx)
+    private void UpdateSkybox(int weatherCode)
     {
-       // skybox.GetComponent<Material>().exposure
-       RenderSettings.skybox = allSkyMats[_idx];
+        int idx = 0;
+
+        if (weatherCode >= 500 && weatherCode < 600) idx = 3; // Rain
+        else if (weatherCode >= 600 && weatherCode < 700) idx = 4; // Snow
+        else if (!isDay) idx = 2; // Night
+        else if (DateTime.Now.Hour >= 18) idx = 1; // Sunset
+        else idx = 0; // Day
+
+        if (allSkyMats.Length > idx)
+            RenderSettings.skybox = allSkyMats[idx];
     }
+    #endregion
+
+    #region Public Buttons
+    // Change city at runtime
+    public void SelectNewYork() { selectedCity = Cities.NewYork; OnValidate(); }
+    public void SelectLondon() { selectedCity = Cities.London; OnValidate(); }
+    public void SelectTokyo() { selectedCity = Cities.Tokyo; OnValidate(); }
+    public void SelectMelbourneAU() { selectedCity = Cities.MelbourneAU; OnValidate(); }
+    public void SelectOrlando() { selectedCity = Cities.Orlando; OnValidate(); }
+    #endregion
 }
